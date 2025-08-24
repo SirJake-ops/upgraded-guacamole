@@ -1,7 +1,6 @@
 mod models;
 mod api;
 
-
 use api::client::ApiClient;
 
 #[tauri::command]

@@ -1,13 +1,15 @@
+use reqwest::Client;
+
 pub struct ApiClient {
-    pub base_url: String,
-    pub api_key: String,
+    client: Client,
+    url: String,
 }
 
 impl ApiClient {
-    pub fn new(base_url: &str, api_key: &str) -> Self {
+    pub fn new(base_url: &str) -> Self {
         Self {
-            base_url: base_url.to_string(),
-            api_key: api_key.to_string(),
+            client: Client::new(),
+            url: base_url.to_string(),
         }
     }
 }

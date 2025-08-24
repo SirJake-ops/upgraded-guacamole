@@ -1,5 +1,4 @@
 use mail_parser::Message;
-use tauri::webview::cookie::ParseError;
 use thiserror::Error;
 
 #[derive(Debug, Error)]

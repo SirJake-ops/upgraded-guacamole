@@ -12,4 +12,12 @@ impl ApiClient {
             url: base_url.to_string(),
         }
     }
+
+    pub async fn simple_hello(&self) -> Result<String, reqwest::Error> {
+        println!("{}", self.url);
+        let url = format!("{}/api/tickets/hello", self.url);
+        let response = self.client.get(&url).send().await?;
+        let text = response.text().await?;
+        Ok(text)
+    }
 }

@@ -9,6 +9,7 @@ export type Ticket = {
   priority: TicketPriority;
   updatedAt: string;
   tags: string[];
+  url: string;
 };
 
 export type PatientTicket = {
@@ -20,6 +21,7 @@ export type PatientTicket = {
   assignedTo?: string;
   updatedAt: string;
   flags: string[];
+  url: string;
 };
 
 export type AdminIssue = {
@@ -31,6 +33,7 @@ export type AdminIssue = {
   owner: string;
   updatedAt: string;
   eta: string;
+  url: string;
 };
 
 export const tickets: Ticket[] = [
@@ -42,6 +45,7 @@ export const tickets: Ticket[] = [
     priority: "Medium",
     updatedAt: "Today 09:14",
     tags: ["hardware", "network"],
+    url: "/tickets/TCK-1042",
   },
   {
     id: "TCK-1041",
@@ -51,6 +55,7 @@ export const tickets: Ticket[] = [
     priority: "High",
     updatedAt: "Today 08:41",
     tags: ["auth", "sso"],
+    url: "/tickets/TCK-1041",
   },
   {
     id: "TCK-1036",
@@ -60,6 +65,7 @@ export const tickets: Ticket[] = [
     priority: "Low",
     updatedAt: "Yesterday 15:02",
     tags: ["ui", "reporting"],
+    url: "/tickets/TCK-1036",
   },
   {
     id: "TCK-1031",
@@ -69,6 +75,7 @@ export const tickets: Ticket[] = [
     priority: "Critical",
     updatedAt: "Yesterday 13:28",
     tags: ["api", "bug"],
+    url: "/tickets/TCK-1031",
   },
   {
     id: "TCK-1024",
@@ -78,6 +85,7 @@ export const tickets: Ticket[] = [
     priority: "Low",
     updatedAt: "Mon 11:10",
     tags: ["config"],
+    url: "/tickets/TCK-1024",
   },
 ];
 
@@ -91,6 +99,7 @@ export const patientTickets: PatientTicket[] = [
     assignedTo: "Dr. Patel",
     updatedAt: "Today 09:21",
     flags: ["troponin", "ekg"],
+    url: "/clinical/PT-8841",
   },
   {
     id: "PT-8837",
@@ -101,6 +110,7 @@ export const patientTickets: PatientTicket[] = [
     assignedTo: "Nurse Lewis",
     updatedAt: "Today 08:57",
     flags: ["vent", "sedation"],
+    url: "/clinical/PT-8837",
   },
   {
     id: "PT-8820",
@@ -110,6 +120,7 @@ export const patientTickets: PatientTicket[] = [
     priority: "Routine",
     updatedAt: "Yesterday 16:10",
     flags: ["discharge", "med-rec"],
+    url: "/clinical/PT-8820",
   },
   {
     id: "PT-8816",
@@ -120,6 +131,7 @@ export const patientTickets: PatientTicket[] = [
     assignedTo: "Dr. Nguyen",
     updatedAt: "Yesterday 14:34",
     flags: ["post-op", "pain"],
+    url: "/clinical/PT-8816",
   },
 ];
 
@@ -133,6 +145,7 @@ export const adminIssues: AdminIssue[] = [
     owner: "IT Ops",
     updatedAt: "Today 09:03",
     eta: "Today 17:00",
+    url: "/admin/issues/ADM-211",
   },
   {
     id: "ADM-206",
@@ -143,6 +156,7 @@ export const adminIssues: AdminIssue[] = [
     owner: "House Sup",
     updatedAt: "Today 08:12",
     eta: "Today 11:00",
+    url: "/admin/issues/ADM-206",
   },
   {
     id: "ADM-199",
@@ -153,6 +167,7 @@ export const adminIssues: AdminIssue[] = [
     owner: "Data Team",
     updatedAt: "Yesterday 12:46",
     eta: "Thu 10:30",
+    url: "/admin/issues/ADM-199",
   },
   {
     id: "ADM-193",
@@ -163,6 +178,6 @@ export const adminIssues: AdminIssue[] = [
     owner: "IAM",
     updatedAt: "Mon 16:05",
     eta: "Wed 13:00",
+    url: "/admin/issues/ADM-193",
   },
 ];
-

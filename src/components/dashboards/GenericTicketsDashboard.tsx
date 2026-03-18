@@ -1,8 +1,9 @@
-import { For } from "solid-js";
+import { For, Show, createSignal } from "solid-js";
 import KpiCard from "./ui/KpiCard";
 import Pill from "./ui/Pill";
 import Sparkline from "./ui/Sparkline";
 import { tickets } from "../../mock/dashboardData";
+import Modal from "../ui/Modal";
 
 const statusTone = (s: string) => {
   if (s === "Resolved") return "good";
@@ -19,6 +20,10 @@ const priorityTone = (p: string) => {
 };
 
 export default function GenericTicketsDashboard() {
+  const [selectedId, setSelectedId] = createSignal<string | null>(null);
+  const selected = () => tickets.find((t) => t.id === selectedId()) ?? null;
+  const [action, setAction] = createSignal<null | { title: string; body: string; href?: string }>(null);
+
   return (
     <section class="dash">
       <header class="dash-header">
@@ -27,10 +32,32 @@ export default function GenericTicketsDashboard() {
           <div class="dash-subtitle">Queues, status, and movement across the last 24 hours</div>
         </div>
         <div class="dash-actions">
-          <button class="btn btn-secondary" type="button" onClick={() => alert("New ticket")}>
+          <button
+            class="btn btn-secondary"
+            type="button"
+            onClick={() => {
+              setSelectedId(null);
+              setAction({
+                title: "Create Ticket",
+                body: "Start a new ticket. This is a mock modal for now; wire it to your .NET create-ticket flow.",
+                href: "/tickets/new",
+              });
+            }}
+          >
             New Ticket
           </button>
-          <button class="btn btn-secondary" type="button" onClick={() => alert("Export")}>
+          <button
+            class="btn btn-secondary"
+            type="button"
+            onClick={() => {
+              setSelectedId(null);
+              setAction({
+                title: "Export Tickets",
+                body: "Export current ticket results. Add format/filters later.",
+                href: "/tickets/export",
+              });
+            }}
+          >
             Export
           </button>
         </div>
@@ -77,22 +104,82 @@ export default function GenericTicketsDashboard() {
             <div class="panel-meta">Buttons just alert for now</div>
           </div>
           <div class="panel-body chip-grid">
-            <button class="chip" type="button" onClick={() => alert("Filter: critical")}>
+            <button
+              class="chip"
+              type="button"
+              onClick={() =>
+                setAction({
+                  title: "Filter: Critical",
+                  body: "Shows critical-priority tickets.",
+                  href: "/tickets?priority=critical",
+                })
+              }
+            >
               Critical
             </button>
-            <button class="chip" type="button" onClick={() => alert("Filter: auth/sso")}>
+            <button
+              class="chip"
+              type="button"
+              onClick={() =>
+                setAction({
+                  title: "Filter: Auth / SSO",
+                  body: "Shows tickets tagged auth or sso.",
+                  href: "/tickets?tag=auth,sso",
+                })
+              }
+            >
               Auth / SSO
             </button>
-            <button class="chip" type="button" onClick={() => alert("Filter: reporting")}>
+            <button
+              class="chip"
+              type="button"
+              onClick={() =>
+                setAction({
+                  title: "Filter: Reporting",
+                  body: "Shows tickets tagged reporting.",
+                  href: "/tickets?tag=reporting",
+                })
+              }
+            >
               Reporting
             </button>
-            <button class="chip" type="button" onClick={() => alert("Filter: unassigned")}>
+            <button
+              class="chip"
+              type="button"
+              onClick={() =>
+                setAction({
+                  title: "Filter: Unassigned",
+                  body: "Shows tickets that are not assigned.",
+                  href: "/tickets?assigned=false",
+                })
+              }
+            >
               Unassigned
             </button>
-            <button class="chip" type="button" onClick={() => alert("Filter: stale > 24h")}>
+            <button
+              class="chip"
+              type="button"
+              onClick={() =>
+                setAction({
+                  title: "Filter: Stale (> 24h)",
+                  body: "Shows tickets that have not been updated in over 24 hours.",
+                  href: "/tickets?stale=24h",
+                })
+              }
+            >
               Stale &gt; 24h
             </button>
-            <button class="chip" type="button" onClick={() => alert("Clear filters")}>
+            <button
+              class="chip"
+              type="button"
+              onClick={() =>
+                setAction({
+                  title: "Clear Filters",
+                  body: "Returns to the unfiltered ticket list.",
+                  href: "/tickets",
+                })
+              }
+            >
               Clear
             </button>
           </div>
@@ -119,7 +206,7 @@ export default function GenericTicketsDashboard() {
             <tbody>
               <For each={tickets}>
                 {(t) => (
-                  <tr onClick={() => alert(`Open ticket ${t.id}`)} class="row-click">
+                  <tr onClick={() => setSelectedId(t.id)} class="row-click">
                     <td class="mono">{t.id}</td>
                     <td>
                       <div class="cell-title">{t.title}</div>
@@ -142,7 +229,79 @@ export default function GenericTicketsDashboard() {
           </table>
         </div>
       </div>
+
+      <Modal
+        open={selected() !== null}
+        title={selected() ? `Ticket ${selected()!.id}` : "Ticket"}
+        onClose={() => setSelectedId(null)}
+      >
+        <Show when={selected()}>
+          {(t) => (
+            <div class="modal-grid">
+              <div class="modal-row">
+                <div class="modal-k">Title</div>
+                <div class="modal-v">{t().title}</div>
+              </div>
+              <div class="modal-row">
+                <div class="modal-k">Requester</div>
+                <div class="modal-v">{t().requester}</div>
+              </div>
+              <div class="modal-row">
+                <div class="modal-k">Status</div>
+                <div class="modal-v">
+                  <Pill text={t().status} tone={statusTone(t().status)} />{" "}
+                  <Pill text={t().priority} tone={priorityTone(t().priority)} />
+                </div>
+              </div>
+              <div class="modal-row">
+                <div class="modal-k">Updated</div>
+                <div class="modal-v">{t().updatedAt}</div>
+              </div>
+              <div class="modal-row">
+                <div class="modal-k">Tags</div>
+                <div class="modal-v">
+                  <div class="cell-tags">
+                    <For each={t().tags}>{(tag) => <span class="tag">{tag}</span>}</For>
+                  </div>
+                </div>
+              </div>
+
+              <div class="modal-footer">
+                <button class="btn btn-secondary" type="button" onClick={() => setSelectedId(null)}>
+                  Close
+                </button>
+                <button
+                  class="btn btn-primary"
+                  type="button"
+                  onClick={() => window.location.assign(t().url)}
+                >
+                  View Details
+                </button>
+              </div>
+            </div>
+          )}
+        </Show>
+      </Modal>
+
+      <Modal open={action() !== null} title={action()?.title ?? "Action"} onClose={() => setAction(null)}>
+        <Show when={action()}>
+          {(a) => (
+            <div class="action-modal">
+              <div class="action-body">{a().body}</div>
+              <div class="modal-footer">
+                <button class="btn btn-secondary" type="button" onClick={() => setAction(null)}>
+                  Close
+                </button>
+                {a().href ? (
+                  <button class="btn btn-primary" type="button" onClick={() => window.location.assign(a().href!)}>
+                    Go
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          )}
+        </Show>
+      </Modal>
     </section>
   );
 }
-

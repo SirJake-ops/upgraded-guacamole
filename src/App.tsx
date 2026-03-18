@@ -1,8 +1,8 @@
 import "./App.css";
-import LoginPage from "./components/auth/LoginPage";
+import AppShell from "./components/app/AppShell";
 
 function App() {
-  return <LoginPage />;
+  return <AppShell />;
 }
 
 export default App;

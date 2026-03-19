@@ -6,3 +6,6 @@ dist
 .idea
 package-lock.json
 dist/
+target/
+backend-rs/target/
+backend-rs/.env

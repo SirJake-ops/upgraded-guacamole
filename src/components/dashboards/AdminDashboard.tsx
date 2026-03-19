@@ -3,7 +3,7 @@ import KpiCard from "./ui/KpiCard";
 import Pill from "./ui/Pill";
 import Sparkline from "./ui/Sparkline";
 import { adminIssues } from "../../mock/dashboardData";
-import Modal from "../ui/Modal";
+import Modal from "../ui/modals/Modal.tsx";
 
 const severityTone = (s: string) => {
   if (s === "S1") return "bad";

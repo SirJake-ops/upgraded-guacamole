@@ -1,0 +1,34 @@
+[package]
+name = "backend-rs"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = []
+qa = []
+
+[dependencies]
+axum = { version = "0.7", features = ["macros", "json", "ws"] }
+axum-extra = { version = "0.9", features = ["cookie-private"] }
+base64 = "0.22"
+chrono = { version = "0.4", features = ["serde"] }
+dotenvy = "0.15"
+http = "1"
+pbkdf2 = "0.12"
+hmac = "0.12"
+sha1 = "0.10"
+sha2 = "0.10"
+rand = "0.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "uuid", "chrono"] }
+subtle = "2"
+thiserror = "2"
+time = "0.3"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+uuid = { version = "1", features = ["serde", "v4"] }
+futures-util = "0.3"

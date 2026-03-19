@@ -14,7 +14,6 @@ use sqlx::postgres::PgPoolOptions;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing_subscriber::EnvFilter;
 
-use crate::{config::Config, state::AppState};
 
 #[tokio::main]
 async fn main() {
@@ -30,7 +29,6 @@ async fn main() {
         }
     };
 
-    let state = match build_state(&cfg).await {
         Ok(s) => s,
         Err(e) => {
             eprintln!("{e}");
@@ -52,21 +50,6 @@ async fn main() {
             .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::OPTIONS])
     };
 
-    let app = Router::new()
-        .route("/api/auth/user", get(auth::current_user))
-        .route("/api/auth/login", post(auth::login))
-        .route("/api/auth/logout", post(auth::logout))
-        .route("/api/tickets", get(tickets::list_tickets).post(tickets::create_ticket))
-        .route("/api/tickets/hello", get(tickets::hello))
-        .route("/ws/chat", get(chat::ws_chat))
-        .route(
-            "/api/tickets/:ticket_id",
-            get(tickets::get_ticket_by_id)
-                .put(tickets::update_ticket)
-                .delete(tickets::delete_ticket)
-                .post(tickets::assign_ticket_to_user),
-        )
-        .with_state(state)
         .layer(cors)
         .layer(TraceLayer::new_for_http());
 

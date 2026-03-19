@@ -12,7 +12,6 @@ use uuid::Uuid;
 
 use crate::state::AppState;
 
-mod identity_password;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -181,7 +180,6 @@ async fn revoke_session(state: &AppState, session_id: Uuid) -> Result<(), Status
 
 async fn require_session_row(state: &AppState, session_id: Uuid) -> Result<SessionRow, StatusCode> {
     let row = sqlx::query_as::<_, SessionRow>(
-        "SELECT \"SessionId\", \"UserId\", \"CreatedAt\", \"LastSeenAt\", \"ExpiresAt\", \"RevokedAt\" \
          FROM \"UserSessions\" \
          WHERE \"SessionId\" = $1 \
          LIMIT 1",

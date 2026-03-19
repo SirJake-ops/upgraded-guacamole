@@ -119,9 +119,4 @@ WebSockets:
 
 - `GET /ws/chat`
 
-## Notes
-
-- GraphQL and SignalR are intentionally not part of the Rust port.
-- Sessions are stored server-side in Postgres (`UserSessions`), and the cookie stores a session id.
-
 

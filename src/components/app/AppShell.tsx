@@ -6,24 +6,40 @@ import AdminDashboard from "../dashboards/AdminDashboard";
 import ToastCenter, { type Toast } from "../notifications/ToastCenter";
 import type { AppEvent } from "../../tauri/events";
 import Drawer from "../ui/Drawer";
+import { getCurrentUser, login, logout, type User } from "../../api/auth";
 
-type ViewKey = "login" | "tickets" | "clinical" | "admin";
+type ViewKey = "tickets" | "clinical" | "admin";
 
 const views: { key: ViewKey; label: string }[] = [
   { key: "tickets", label: "Tickets" },
   { key: "clinical", label: "Doctor/Nurse" },
   { key: "admin", label: "Hospital Admin" },
-  { key: "login", label: "Login" },
 ];
 
 export default function AppShell() {
   const [view, setView] = createSignal<ViewKey>("tickets");
-  const active = createMemo(() => views.find((v) => v.key === view())?.label ?? "App");
-  const isLogin = createMemo(() => view() === "login");
+  const [user, setUser] = createSignal<User | null>(null);
+  const role = createMemo(() => (user()?.role ?? "").toLowerCase());
+  const allowedViews = createMemo(() => {
+    const r = role();
+    if (r === "admin") return views;
+    if (r === "doctor" || r === "nurse") return views.filter((v) => v.key !== "admin");
+    return views.filter((v) => v.key === "tickets");
+  });
+  const active = createMemo(() => allowedViews().find((v) => v.key === view())?.label ?? "App");
+  const [checking, setChecking] = createSignal(true);
+  const [authBusy, setAuthBusy] = createSignal(false);
+  const [authError, setAuthError] = createSignal<string | null>(null);
+  const authed = createMemo(() => user() !== null);
   const [unread, setUnread] = createSignal(0);
   const [toasts, setToasts] = createSignal<Toast[]>([]);
   const [events, setEvents] = createSignal<{ id: string; at: string; event: AppEvent }[]>([]);
   const [drawer, setDrawer] = createSignal<null | "search" | "alerts">(null);
+  const [accountOpen, setAccountOpen] = createSignal(false);
+  const apiBase = createMemo(() => {
+    const base = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "http://localhost:5176";
+    return `${base.replace(/\/+$/, "")}/api`;
+  });
 
   const dismissToast = (id: string) => {
     setToasts((xs) => xs.filter((t) => t.id !== id));
@@ -35,6 +51,22 @@ export default function AppShell() {
     setToasts((xs) => [toast, ...xs].slice(0, 5));
     setTimeout(() => dismissToast(id), 6000);
   };
+
+  onMount(async () => {
+    try {
+      const u = await getCurrentUser();
+      if (u) {
+        setUser(u);
+        const r = (u.role ?? "").toLowerCase();
+        if (r === "doctor" || r === "nurse") setView("clinical");
+        else setView("tickets");
+      }
+    } catch {
+      setUser(null);
+    } finally {
+      setChecking(false);
+    }
+  });
 
   onMount(async () => {
     let unlisten: null | (() => void) = null;
@@ -69,8 +101,25 @@ export default function AppShell() {
     });
   });
 
+  const onLogin = async (values: { email: string; password: string }) => {
+    setAuthBusy(true);
+    setAuthError(null);
+    try {
+      const u = await login(values.email, values.password);
+      setUser(u);
+      const r = (u.role ?? "").toLowerCase();
+      if (r === "doctor" || r === "nurse") setView("clinical");
+      else setView("tickets");
+    } catch (e) {
+      setUser(null);
+      setAuthError(e instanceof Error ? e.message : "Login failed");
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
   return (
-    <div class={`app ${isLogin() ? "app-login" : ""}`}>
+    <div class={`app ${!authed() ? "app-login" : ""}`}>
       <ToastCenter toasts={toasts()} onDismiss={dismissToast} />
       <Drawer open={drawer() === "search"} title="Search" onClose={() => setDrawer(null)}>
         <div class="drawer-stack">
@@ -86,13 +135,36 @@ export default function AppShell() {
           </div>
           <div class="drawer-muted">Mock UI. Wire this to your .NET backend search later.</div>
           <div class="drawer-list">
-            <button class="drawer-item" type="button" onClick={() => window.location.assign("/tickets")}>
+            <button
+              class="drawer-item"
+              type="button"
+              onClick={() => {
+                setView("tickets");
+                setDrawer(null);
+              }}
+            >
               Go to tickets
             </button>
-            <button class="drawer-item" type="button" onClick={() => window.location.assign("/clinical")}>
+            <button
+              class="drawer-item"
+              type="button"
+              onClick={() => {
+                setView("clinical");
+                setDrawer(null);
+              }}
+              disabled={allowedViews().find((v) => v.key === "clinical") == null}
+            >
               Go to clinical
             </button>
-            <button class="drawer-item" type="button" onClick={() => window.location.assign("/admin")}>
+            <button
+              class="drawer-item"
+              type="button"
+              onClick={() => {
+                setView("admin");
+                setDrawer(null);
+              }}
+              disabled={allowedViews().find((v) => v.key === "admin") == null}
+            >
               Go to admin
             </button>
           </div>
@@ -122,8 +194,10 @@ export default function AppShell() {
                   type="button"
                   onClick={() => {
                     const ev = x.event;
-                    if (ev.type === "TicketCreated") window.location.assign(`/tickets/${ev.payload.ticket_id}`);
-                    if (ev.type === "TicketUpdated") window.location.assign(`/tickets/${ev.payload.ticket_id}`);
+                    if (ev.type === "TicketCreated")
+                      window.location.assign(`${apiBase()}/tickets/${ev.payload.ticket_id}`);
+                    if (ev.type === "TicketUpdated")
+                      window.location.assign(`${apiBase()}/tickets/${ev.payload.ticket_id}`);
                   }}
                 >
                   <div class="feed-top">
@@ -142,7 +216,30 @@ export default function AppShell() {
         </div>
       </Drawer>
 
-      {!isLogin() ? (
+      <Drawer open={accountOpen()} title="Account" onClose={() => setAccountOpen(false)}>
+        <div class="drawer-stack">
+          <div class="drawer-muted">
+            Signed in as{" "}
+            <span class="mono">{user()?.userName ?? user()?.email ?? "user"}</span>
+          </div>
+          <div class="drawer-list">
+            <button
+              class="drawer-item"
+              type="button"
+              onClick={async () => {
+                await logout();
+                setUser(null);
+                setDrawer(null);
+                setAccountOpen(false);
+              }}
+            >
+              Log out
+            </button>
+          </div>
+        </div>
+      </Drawer>
+
+      {authed() ? (
         <header class="topbar">
           <div class="brand">
             <div class="brand-mark" aria-hidden="true">
@@ -155,7 +252,7 @@ export default function AppShell() {
           </div>
 
           <nav class="nav">
-            <For each={views.filter((v) => v.key !== "login")}>
+            <For each={allowedViews()}>
               {(v) => (
                 <button
                   type="button"
@@ -182,15 +279,25 @@ export default function AppShell() {
             >
               Alerts {unread() > 0 ? <span class="badge">{unread()}</span> : null}
             </button>
+            <button class="icon-btn" type="button" onClick={() => setAccountOpen(true)}>
+              Account
+            </button>
           </div>
         </header>
       ) : null}
 
-      <main class={`content ${isLogin() ? "content-login" : ""}`}>
-        {view() === "login" ? <LoginPage /> : null}
-        {view() === "tickets" ? <GenericTicketsDashboard /> : null}
-        {view() === "clinical" ? <ClinicianDashboard /> : null}
-        {view() === "admin" ? <AdminDashboard /> : null}
+      <main class={`content ${!authed() ? "content-login" : ""}`}>
+        {!authed() ? (
+          <LoginPage
+            onLogin={onLogin}
+            onSso={() => setAuthError("SSO not wired yet")}
+            busy={checking() || authBusy()}
+            error={authError()}
+          />
+        ) : null}
+        {authed() && view() === "tickets" ? <GenericTicketsDashboard /> : null}
+        {authed() && view() === "clinical" ? <ClinicianDashboard /> : null}
+        {authed() && view() === "admin" ? <AdminDashboard /> : null}
       </main>
     </div>
   );

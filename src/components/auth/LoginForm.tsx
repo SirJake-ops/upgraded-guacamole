@@ -1,4 +1,5 @@
 import { createSignal } from "solid-js";
+import axios from 'axios';
 
 export type LoginValues = {
   email: string;
@@ -7,6 +8,8 @@ export type LoginValues = {
 
 type LoginFormProps = {
   onSubmit?: (values: LoginValues) => void;
+  disabled?: boolean;
+  error?: string | null;
 };
 
 export default function LoginForm(props: LoginFormProps) {
@@ -19,6 +22,14 @@ export default function LoginForm(props: LoginFormProps) {
       onSubmit={(e) => {
         e.preventDefault();
         props.onSubmit?.({ email: email(), password: password() });
+        axios.post("/api/auth/login", {
+          props
+        }).then(response => {
+          console.log(response);
+        })
+            .catch((error: Error) => {
+              console.log(error);
+            })
       }}
     >
       <label class="field">
@@ -32,6 +43,7 @@ export default function LoginForm(props: LoginFormProps) {
           value={email()}
           onInput={(e) => setEmail(e.currentTarget.value)}
           required
+          disabled={props.disabled}
         />
       </label>
 
@@ -45,11 +57,14 @@ export default function LoginForm(props: LoginFormProps) {
           value={password()}
           onInput={(e) => setPassword(e.currentTarget.value)}
           required
+          disabled={props.disabled}
         />
       </label>
 
-      <button class="btn btn-primary" type="submit">
-        Sign in
+      {props.error ? <div class="auth-error">{props.error}</div> : null}
+
+      <button class="btn btn-primary" type="submit" disabled={props.disabled}>
+        {props.disabled ? "Signing in..." : "Sign in"}
       </button>
     </form>
   );

@@ -1,8 +1,16 @@
 import SsoButton from "./SsoButton";
 import AuthDivider from "./AuthDivider";
 import LoginForm from "./LoginForm";
+import type { LoginValues } from "./LoginForm";
 
-export default function LoginPage() {
+type LoginPageProps = {
+  onLogin?: (values: LoginValues) => void;
+  onSso?: () => void;
+  busy?: boolean;
+  error?: string | null;
+};
+
+export default function LoginPage(props: LoginPageProps) {
   return (
     <main class="auth-shell">
       <section class="auth-card" aria-label="Login">
@@ -11,16 +19,12 @@ export default function LoginPage() {
           <p class="auth-subtitle">Use your email and password, or continue with SSO.</p>
         </header>
 
-        <SsoButton onClick={() => alert("SSO button clicked")} />
+        <SsoButton onClick={props.onSso} />
         <AuthDivider />
-        <LoginForm
-          onSubmit={({ email, password }) => {
-            alert(`email: ${email}\npassword: ${password}`);
-          }}
-        />
+        <LoginForm onSubmit={props.onLogin} disabled={props.busy} error={props.error} />
 
         <footer class="auth-footer">
-          <span>Demo only: this page just alerts values.</span>
+          <span>Mock login UI.</span>
         </footer>
       </section>
     </main>

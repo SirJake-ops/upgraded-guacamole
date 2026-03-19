@@ -1,19 +1,27 @@
-import { For, Show, createSignal } from "solid-js";
+import { For, Show, createMemo, createResource, createSignal } from "solid-js";
 import KpiCard from "./ui/KpiCard";
 import Pill from "./ui/Pill";
-import { patientTickets } from "../../mock/dashboardData";
 import Modal from "../ui/Modal";
+import { getTickets, type Ticket } from "../../api/tickets";
 
-const priorityTone = (p: string) => {
-  if (p === "STAT") return "bad";
-  if (p === "Urgent") return "warn";
-  return "neutral";
+const envLabel = (e: Ticket["environment"]) => {
+  if (typeof e === "string") return e;
+  if (e === 0) return "Browser";
+  if (e === 1) return "Device";
+  if (e === 2) return "OperatingSystem";
+  return "Unknown";
 };
 
 export default function ClinicianDashboard() {
   const [selectedId, setSelectedId] = createSignal<string | null>(null);
-  const selected = () => patientTickets.find((t) => t.id === selectedId()) ?? null;
+  const [items, { refetch }] = createResource(getTickets);
+  const list = createMemo(() => items() ?? []);
+  const selected = createMemo(() => list().find((t) => t.ticketId === selectedId()) ?? null);
   const [action, setAction] = createSignal<null | { title: string; body: string; href?: string }>(null);
+  const apiBase = createMemo(() => {
+    const base = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "http://localhost:5176";
+    return `${base.replace(/\/+$/, "")}/api`;
+  });
 
   return (
     <section class="dash">
@@ -26,12 +34,7 @@ export default function ClinicianDashboard() {
           <button
             class="btn btn-secondary"
             type="button"
-            onClick={() =>
-              setAction({
-                title: "Refresh Queue",
-                body: "Refresh the clinical queue from the backend (mock modal).",
-              })
-            }
+            onClick={() => refetch()}
           >
             Refresh
           </button>
@@ -61,40 +64,36 @@ export default function ClinicianDashboard() {
       <div class="grid-2">
         <div class="panel">
           <div class="panel-head">
-            <div class="panel-title">Triage Queue</div>
-            <div class="panel-meta">Click a row to open</div>
+            <div class="panel-title">My Queue</div>
+            <div class="panel-meta">{items.loading ? "Loading..." : `${list().length} shown`}</div>
           </div>
           <div class="table-wrap">
             <table class="table">
               <thead>
                 <tr>
                   <th>ID</th>
-                  <th>Patient</th>
-                  <th>Unit</th>
                   <th>Summary</th>
-                  <th>Priority</th>
+                  <th>Environment</th>
                   <th>Assigned</th>
-                  <th>Updated</th>
+                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
-                <For each={patientTickets}>
+                <For each={list()}>
                   {(t) => (
-                    <tr onClick={() => setSelectedId(t.id)} class="row-click">
-                      <td class="mono">{t.id}</td>
-                      <td class="cell-title">{t.patient}</td>
-                      <td>{t.unit}</td>
+                    <tr onClick={() => setSelectedId(t.ticketId)} class="row-click">
+                      <td class="mono">{t.ticketId}</td>
+                      <td class="cell-title">{t.title}</td>
+                      <td>{envLabel(t.environment)}</td>
                       <td>
-                        <div class="cell-title">{t.summary}</div>
-                        <div class="cell-tags">
-                          <For each={t.flags}>{(f) => <span class="tag tag-soft">{f}</span>}</For>
-                        </div>
+                        <Pill
+                          text={t.assigneeId ? "Assigned" : "Unassigned"}
+                          tone={t.assigneeId ? "info" : "warn"}
+                        />
                       </td>
                       <td>
-                        <Pill text={t.priority} tone={priorityTone(t.priority)} />
+                        <Pill text={t.isResolved ? "Resolved" : "Open"} tone={t.isResolved ? "good" : "neutral"} />
                       </td>
-                      <td>{t.assignedTo ?? "Unassigned"}</td>
-                      <td>{t.updatedAt}</td>
                     </tr>
                   )}
                 </For>
@@ -168,45 +167,37 @@ export default function ClinicianDashboard() {
 
       <Modal
         open={selected() !== null}
-        title={selected() ? `Patient Ticket ${selected()!.id}` : "Patient Ticket"}
+        title={selected() ? `Ticket ${selected()!.ticketId}` : "Ticket"}
         onClose={() => setSelectedId(null)}
       >
         <Show when={selected()}>
           {(t) => (
             <div class="modal-grid">
               <div class="modal-row">
-                <div class="modal-k">Patient</div>
-                <div class="modal-v">{t().patient}</div>
+                <div class="modal-k">Title</div>
+                <div class="modal-v">{t().title}</div>
               </div>
               <div class="modal-row">
-                <div class="modal-k">Unit</div>
-                <div class="modal-v">{t().unit}</div>
-              </div>
-              <div class="modal-row">
-                <div class="modal-k">Priority</div>
-                <div class="modal-v">
-                  <Pill text={t().priority} tone={priorityTone(t().priority)} />
-                </div>
+                <div class="modal-k">Environment</div>
+                <div class="modal-v">{envLabel(t().environment)}</div>
               </div>
               <div class="modal-row">
                 <div class="modal-k">Assigned</div>
-                <div class="modal-v">{t().assignedTo ?? "Unassigned"}</div>
+                <div class="modal-v">{t().assigneeId ? <Pill text="Assigned" tone="info" /> : <Pill text="Unassigned" tone="warn" />}</div>
               </div>
               <div class="modal-row">
-                <div class="modal-k">Summary</div>
-                <div class="modal-v">{t().summary}</div>
-              </div>
-              <div class="modal-row">
-                <div class="modal-k">Flags</div>
+                <div class="modal-k">Status</div>
                 <div class="modal-v">
-                  <div class="cell-tags">
-                    <For each={t().flags}>{(f) => <span class="tag tag-soft">{f}</span>}</For>
-                  </div>
+                  <Pill text={t().isResolved ? "Resolved" : "Open"} tone={t().isResolved ? "good" : "neutral"} />
                 </div>
               </div>
               <div class="modal-row">
-                <div class="modal-k">Updated</div>
-                <div class="modal-v">{t().updatedAt}</div>
+                <div class="modal-k">Summary</div>
+                <div class="modal-v">{t().description}</div>
+              </div>
+              <div class="modal-row">
+                <div class="modal-k">Steps</div>
+                <div class="modal-v">{t().stepsToReproduce}</div>
               </div>
 
               <div class="modal-footer">
@@ -216,7 +207,7 @@ export default function ClinicianDashboard() {
                 <button
                   class="btn btn-primary"
                   type="button"
-                  onClick={() => window.location.assign(t().url)}
+                  onClick={() => window.location.assign(`${apiBase()}/tickets/${t().ticketId}`)}
                 >
                   View Details
                 </button>

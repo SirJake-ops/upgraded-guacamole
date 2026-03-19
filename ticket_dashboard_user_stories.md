@@ -27,6 +27,7 @@ credentials return an error message
 validates token - Invalid or expired tokens redirect the user back to
 the login page - User session persists during refresh if token is valid
 
+- [x] User can log in and is authenticated and has a session tied to them
 ------------------------------------------------------------------------
 
 # Epic 2: Dashboard Overview
@@ -43,6 +44,8 @@ Data is retrieved from the backend API - Dashboard refreshes
 automatically or via manual reload - Layout renders correctly across
 screen sizes
 
+- [x] User when logged in can see their roles can see tickets
+- [ ] User cannot create tickets yet TBD
 ------------------------------------------------------------------------
 
 ### Story 4: View Ticket Queue Trends

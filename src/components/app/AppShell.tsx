@@ -295,7 +295,7 @@ export default function AppShell() {
             error={authError()}
           />
         ) : null}
-        {authed() && view() === "tickets" ? <GenericTicketsDashboard /> : null}
+        {authed() && view() === "tickets" ? <GenericTicketsDashboard currentUserId={user()!.id} /> : null}
         {authed() && view() === "clinical" ? <ClinicianDashboard /> : null}
         {authed() && view() === "admin" ? <AdminDashboard /> : null}
       </main>

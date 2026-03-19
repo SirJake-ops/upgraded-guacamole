@@ -130,11 +130,38 @@ input {
   transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
 }
 
+select.select,
+textarea.textarea {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  padding: 12px 12px;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(0, 0, 0, 0.22);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+  font-family: inherit;
+}
+
+textarea.textarea {
+  resize: vertical;
+  line-height: 1.35;
+}
+
 input::placeholder {
   color: rgba(255, 255, 255, 0.5);
 }
 
 input:focus {
+  outline: none;
+  border-color: rgba(71, 255, 214, 0.6);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.35), 0 0 0 4px rgba(71, 255, 214, 0.12);
+  transform: translateY(-1px);
+}
+
+select.select:focus,
+textarea.textarea:focus {
   outline: none;
   border-color: rgba(71, 255, 214, 0.6);
   box-shadow: 0 12px 34px rgba(0, 0, 0, 0.35), 0 0 0 4px rgba(71, 255, 214, 0.12);

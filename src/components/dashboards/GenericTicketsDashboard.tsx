@@ -1,35 +1,41 @@
-import { For, Show, createSignal } from "solid-js";
+import { For, Show, createMemo, createResource, createSignal } from "solid-js";
 import KpiCard from "./ui/KpiCard";
 import Pill from "./ui/Pill";
 import Sparkline from "./ui/Sparkline";
-import { tickets } from "../../mock/dashboardData";
 import Modal from "../ui/Modal";
+import { getTickets, type Ticket } from "../../api/tickets";
 
-const statusTone = (s: string) => {
-  if (s === "Resolved") return "good";
-  if (s === "Waiting") return "info";
-  if (s === "In Progress") return "warn";
-  return "neutral";
-};
-
-const priorityTone = (p: string) => {
-  if (p === "Critical") return "bad";
-  if (p === "High") return "warn";
-  if (p === "Medium") return "info";
-  return "neutral";
+const envLabel = (e: Ticket["environment"]) => {
+  if (typeof e === "string") return e;
+  if (e === 0) return "Browser";
+  if (e === 1) return "Device";
+  if (e === 2) return "OperatingSystem";
+  return "Unknown";
 };
 
 export default function GenericTicketsDashboard() {
   const [selectedId, setSelectedId] = createSignal<string | null>(null);
-  const selected = () => tickets.find((t) => t.id === selectedId()) ?? null;
   const [action, setAction] = createSignal<null | { title: string; body: string; href?: string }>(null);
+  const [items, { refetch }] = createResource(getTickets);
+  const list = createMemo(() => items() ?? []);
+  const selected = createMemo(() => list().find((t) => t.ticketId === selectedId()) ?? null);
+  const apiBase = createMemo(() => {
+    const base = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "http://localhost:5176";
+    return `${base.replace(/\/+$/, "")}/api`;
+  });
+
+  const openCount = createMemo(() => list().filter((t) => !t.isResolved).length);
+  const resolvedCount = createMemo(() => list().filter((t) => t.isResolved).length);
+  const unassignedCount = createMemo(() => list().filter((t) => !t.assigneeId).length);
 
   return (
     <section class="dash">
       <header class="dash-header">
         <div>
           <h2 class="dash-title">Ticket Overview</h2>
-          <div class="dash-subtitle">Queues, status, and movement across the last 24 hours</div>
+          <div class="dash-subtitle">
+            {items.loading ? "Loading tickets..." : "Tickets from /api/tickets (role-filtered by backend)"}
+          </div>
         </div>
         <div class="dash-actions">
           <button
@@ -39,8 +45,7 @@ export default function GenericTicketsDashboard() {
               setSelectedId(null);
               setAction({
                 title: "Create Ticket",
-                body: "Start a new ticket. This is a mock modal for now; wire it to your .NET create-ticket flow.",
-                href: "/tickets/new",
+                body: "This UI isn’t wired yet. Your backend create route is POST /api/tickets.",
               });
             }}
           >
@@ -53,21 +58,23 @@ export default function GenericTicketsDashboard() {
               setSelectedId(null);
               setAction({
                 title: "Export Tickets",
-                body: "Export current ticket results. Add format/filters later.",
-                href: "/tickets/export",
+                body: "Export isn’t wired yet. This will be driven by your backend later.",
               });
             }}
           >
             Export
           </button>
+          <button class="btn btn-secondary" type="button" onClick={() => refetch()}>
+            Refresh
+          </button>
         </div>
       </header>
 
       <div class="kpi-grid">
-        <KpiCard label="Open" value="18" delta="+3" tone="teal" />
-        <KpiCard label="In Progress" value="7" delta="-1" tone="indigo" />
-        <KpiCard label="Waiting" value="5" delta="+2" tone="amber" />
-        <KpiCard label="SLA Risk" value="2" delta="+1" tone="rose" />
+        <KpiCard label="Open" value={`${openCount()}`} tone="teal" />
+        <KpiCard label="Resolved" value={`${resolvedCount()}`} tone="indigo" />
+        <KpiCard label="Unassigned" value={`${unassignedCount()}`} tone="amber" />
+        <KpiCard label="Total" value={`${list().length}`} tone="rose" />
       </div>
 
       <div class="grid-2">
@@ -101,7 +108,7 @@ export default function GenericTicketsDashboard() {
         <div class="panel">
           <div class="panel-head">
             <div class="panel-title">Quick Filters</div>
-            <div class="panel-meta">Buttons just alert for now</div>
+            <div class="panel-meta">Modal only (not wired)</div>
           </div>
           <div class="panel-body chip-grid">
             <button
@@ -109,48 +116,32 @@ export default function GenericTicketsDashboard() {
               type="button"
               onClick={() =>
                 setAction({
-                  title: "Filter: Critical",
-                  body: "Shows critical-priority tickets.",
-                  href: "/tickets?priority=critical",
+                  title: "Filter",
+                  body: "Filtering isn’t wired yet. The backend already role-filters ticket visibility.",
                 })
               }
             >
-              Critical
+              Open
             </button>
             <button
               class="chip"
               type="button"
               onClick={() =>
                 setAction({
-                  title: "Filter: Auth / SSO",
-                  body: "Shows tickets tagged auth or sso.",
-                  href: "/tickets?tag=auth,sso",
+                  title: "Filter",
+                  body: "Filtering isn’t wired yet. The backend already role-filters ticket visibility.",
                 })
               }
             >
-              Auth / SSO
+              Resolved
             </button>
             <button
               class="chip"
               type="button"
               onClick={() =>
                 setAction({
-                  title: "Filter: Reporting",
-                  body: "Shows tickets tagged reporting.",
-                  href: "/tickets?tag=reporting",
-                })
-              }
-            >
-              Reporting
-            </button>
-            <button
-              class="chip"
-              type="button"
-              onClick={() =>
-                setAction({
-                  title: "Filter: Unassigned",
-                  body: "Shows tickets that are not assigned.",
-                  href: "/tickets?assigned=false",
+                  title: "Filter",
+                  body: "Filtering isn’t wired yet. The backend already role-filters ticket visibility.",
                 })
               }
             >
@@ -161,13 +152,24 @@ export default function GenericTicketsDashboard() {
               type="button"
               onClick={() =>
                 setAction({
-                  title: "Filter: Stale (> 24h)",
-                  body: "Shows tickets that have not been updated in over 24 hours.",
-                  href: "/tickets?stale=24h",
+                  title: "Filter",
+                  body: "Filtering isn’t wired yet. The backend already role-filters ticket visibility.",
                 })
               }
             >
-              Stale &gt; 24h
+              Assigned
+            </button>
+            <button
+              class="chip"
+              type="button"
+              onClick={() =>
+                setAction({
+                  title: "Filter",
+                  body: "Filtering isn’t wired yet. The backend already role-filters ticket visibility.",
+                })
+              }
+            >
+              Browser
             </button>
             <button
               class="chip"
@@ -175,8 +177,7 @@ export default function GenericTicketsDashboard() {
               onClick={() =>
                 setAction({
                   title: "Clear Filters",
-                  body: "Returns to the unfiltered ticket list.",
-                  href: "/tickets",
+                  body: "Filtering isn’t wired yet.",
                 })
               }
             >
@@ -188,8 +189,8 @@ export default function GenericTicketsDashboard() {
 
       <div class="panel">
         <div class="panel-head">
-          <div class="panel-title">Latest Tickets</div>
-          <div class="panel-meta">Mock data</div>
+          <div class="panel-title">Tickets</div>
+          <div class="panel-meta">{items.loading ? "Loading..." : `${list().length} shown`}</div>
         </div>
         <div class="table-wrap">
           <table class="table">
@@ -197,31 +198,27 @@ export default function GenericTicketsDashboard() {
               <tr>
                 <th>ID</th>
                 <th>Title</th>
-                <th>Requester</th>
+                <th>Environment</th>
+                <th>Assigned</th>
                 <th>Status</th>
-                <th>Priority</th>
-                <th>Updated</th>
               </tr>
             </thead>
             <tbody>
-              <For each={tickets}>
+              <For each={list()}>
                 {(t) => (
-                  <tr onClick={() => setSelectedId(t.id)} class="row-click">
-                    <td class="mono">{t.id}</td>
+                  <tr onClick={() => setSelectedId(t.ticketId)} class="row-click">
+                    <td class="mono">{t.ticketId}</td>
+                    <td class="cell-title">{t.title}</td>
+                    <td>{envLabel(t.environment)}</td>
                     <td>
-                      <div class="cell-title">{t.title}</div>
-                      <div class="cell-tags">
-                        <For each={t.tags}>{(tag) => <span class="tag">{tag}</span>}</For>
-                      </div>
-                    </td>
-                    <td>{t.requester}</td>
-                    <td>
-                      <Pill text={t.status} tone={statusTone(t.status)} />
+                      <Pill
+                        text={t.assigneeId ? "Assigned" : "Unassigned"}
+                        tone={t.assigneeId ? "info" : "warn"}
+                      />
                     </td>
                     <td>
-                      <Pill text={t.priority} tone={priorityTone(t.priority)} />
+                      <Pill text={t.isResolved ? "Resolved" : "Open"} tone={t.isResolved ? "good" : "neutral"} />
                     </td>
-                    <td>{t.updatedAt}</td>
                   </tr>
                 )}
               </For>
@@ -232,7 +229,7 @@ export default function GenericTicketsDashboard() {
 
       <Modal
         open={selected() !== null}
-        title={selected() ? `Ticket ${selected()!.id}` : "Ticket"}
+        title={selected() ? `Ticket ${selected()!.ticketId}` : "Ticket"}
         onClose={() => setSelectedId(null)}
       >
         <Show when={selected()}>
@@ -243,27 +240,40 @@ export default function GenericTicketsDashboard() {
                 <div class="modal-v">{t().title}</div>
               </div>
               <div class="modal-row">
-                <div class="modal-k">Requester</div>
-                <div class="modal-v">{t().requester}</div>
+                <div class="modal-k">Environment</div>
+                <div class="modal-v">{envLabel(t().environment)}</div>
+              </div>
+              <div class="modal-row">
+                <div class="modal-k">Assigned</div>
+                <div class="modal-v">
+                  <Pill text={t().assigneeId ? "Assigned" : "Unassigned"} tone={t().assigneeId ? "info" : "warn"} />
+                </div>
               </div>
               <div class="modal-row">
                 <div class="modal-k">Status</div>
                 <div class="modal-v">
-                  <Pill text={t().status} tone={statusTone(t().status)} />{" "}
-                  <Pill text={t().priority} tone={priorityTone(t().priority)} />
+                  <Pill text={t().isResolved ? "Resolved" : "Open"} tone={t().isResolved ? "good" : "neutral"} />
                 </div>
               </div>
               <div class="modal-row">
-                <div class="modal-k">Updated</div>
-                <div class="modal-v">{t().updatedAt}</div>
+                <div class="modal-k">Submitter</div>
+                <div class="modal-v mono">{t().submitterId}</div>
               </div>
               <div class="modal-row">
-                <div class="modal-k">Tags</div>
-                <div class="modal-v">
-                  <div class="cell-tags">
-                    <For each={t().tags}>{(tag) => <span class="tag">{tag}</span>}</For>
-                  </div>
-                </div>
+                <div class="modal-k">Assignee</div>
+                <div class="modal-v mono">{t().assigneeId ?? "null"}</div>
+              </div>
+              <div class="modal-row">
+                <div class="modal-k">Description</div>
+                <div class="modal-v">{t().description}</div>
+              </div>
+              <div class="modal-row">
+                <div class="modal-k">Steps</div>
+                <div class="modal-v">{t().stepsToReproduce}</div>
+              </div>
+              <div class="modal-row">
+                <div class="modal-k">Expected</div>
+                <div class="modal-v">{t().expectedResult}</div>
               </div>
 
               <div class="modal-footer">
@@ -273,7 +283,7 @@ export default function GenericTicketsDashboard() {
                 <button
                   class="btn btn-primary"
                   type="button"
-                  onClick={() => window.location.assign(t().url)}
+                  onClick={() => window.location.assign(`${apiBase()}/tickets/${t().ticketId}`)}
                 >
                   View Details
                 </button>

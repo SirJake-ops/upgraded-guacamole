@@ -6,7 +6,14 @@
   "scripts": {
     "start": "vite",
     "dev": "vite",
+    "dev:tauri": "vite",
+    "api:rust": "cargo run --manifest-path backend-rs/Cargo.toml",
+    "api:rust:qa": "cargo run --manifest-path backend-rs/Cargo.toml --features qa",
+    "dev:rust": "concurrently -k -n api,ui -c cyan,green \"npm run api:rust:qa\" \"cross-env VITE_API_BASE_URL=http://localhost:5177 vite\"",
+    "up:rust": "npm run dev:rust",
+    "gen:cookie-key": "node -e \"console.log(require('crypto').randomBytes(64).toString('base64'))\"",
     "tauri-dev": "tauri dev",
+    "tauri-dev:rust": "concurrently -k -n api,tauri -c cyan,magenta \"npm run api:rust:qa\" \"cross-env VITE_API_BASE_URL=http://localhost:5177 tauri dev\"",
     "build": "vite build",
     "serve": "vite preview",
     "tauri": "tauri"
@@ -21,6 +28,8 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",
+    "concurrently": "^9.2.1",
+    "cross-env": "^7.0.3",
     "typescript": "~5.6.2",
     "vite": "^6.0.3",
     "vite-plugin-solid": "^2.11.0"

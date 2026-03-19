@@ -28,9 +28,54 @@ export async function getTickets(): Promise<Ticket[]> {
   return (await res.json()) as Ticket[];
 }
 
+export type CreateTicketInput = {
+  submitterId: string;
+  environment: 0 | 1 | 2;
+  title: string;
+  description: string;
+  stepsToReproduce: string;
+  expectedResult: string;
+};
+
+export type TicketResponse = {
+  ticketId: string;
+  title: string;
+  description: string;
+  stepsToReproduce: string;
+  expectedResult: string;
+  environment: string;
+  submitterId: string;
+  assigneeId: string;
+  createdAt: string;
+  isResolved: boolean;
+};
+
+export async function createTicket(input: CreateTicketInput): Promise<TicketResponse> {
+  const res = await fetch(`${api_base}/tickets`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({
+      submitterId: input.submitterId,
+      environment: input.environment,
+      title: input.title,
+      description: input.description,
+      stepsToReproduce: input.stepsToReproduce,
+      expectedResult: input.expectedResult,
+      files: [],
+      isResolved: false,
+    }),
+  });
+  if (res.status === 401 || res.status === 403) throw new Error("Unauthorized");
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || `POST /api/tickets failed (${res.status})`);
+  }
+  return (await res.json()) as TicketResponse;
+}
+
 export const canSeeAdmin = (u: User | null) => (u?.role ?? "").toLowerCase() === "admin";
 export const isClinician = (u: User | null) => {
   const r = (u?.role ?? "").toLowerCase();
   return r === "doctor" || r === "nurse";
 };
-

@@ -1,7 +1,7 @@
 import { For, Show, createMemo, createResource, createSignal } from "solid-js";
 import KpiCard from "./ui/KpiCard";
 import Pill from "./ui/Pill";
-import Modal from "../ui/Modal";
+import Modal from "../ui/modals/Modal.tsx";
 import { getTickets, type Ticket } from "../../api/tickets";
 
 const envLabel = (e: Ticket["environment"]) => {

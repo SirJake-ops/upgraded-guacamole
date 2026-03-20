@@ -1,4 +1,5 @@
 import { For, Show, createMemo, createResource, createSignal } from "solid-js";
+import { useNavigate } from "@solidjs/router";
 import KpiCard from "./ui/KpiCard";
 import Pill from "./ui/Pill";
 import Modal from "../ui/modals/Modal.tsx";
@@ -13,15 +14,12 @@ const envLabel = (e: Ticket["environment"]) => {
 };
 
 export default function ClinicianDashboard() {
+  const navigate = useNavigate();
   const [selectedId, setSelectedId] = createSignal<string | null>(null);
   const [items, { refetch }] = createResource(getTickets);
   const list = createMemo(() => items() ?? []);
   const selected = createMemo(() => list().find((t) => t.ticketId === selectedId()) ?? null);
   const [action, setAction] = createSignal<null | { title: string; body: string; href?: string }>(null);
-  const apiBase = createMemo(() => {
-    const base = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "http://localhost:5176";
-    return `${base.replace(/\/+$/, "")}/api`;
-  });
 
   return (
     <section class="dash">
@@ -71,7 +69,7 @@ export default function ClinicianDashboard() {
             <table class="table">
               <thead>
                 <tr>
-                  <th>ID</th>
+                <th>No.</th>
                   <th>Summary</th>
                   <th>Environment</th>
                   <th>Assigned</th>
@@ -80,10 +78,10 @@ export default function ClinicianDashboard() {
               </thead>
               <tbody>
                 <For each={list()}>
-                  {(t) => (
-                    <tr onClick={() => setSelectedId(t.ticketId)} class="row-click">
-                      <td class="mono">{t.ticketId}</td>
-                      <td class="cell-title">{t.title}</td>
+                {(t) => (
+                  <tr onClick={() => setSelectedId(t.ticketId)} class="row-click">
+                    <td class="mono">#{t.ticketNumber}</td>
+                    <td class="cell-title">{t.title}</td>
                       <td>{envLabel(t.environment)}</td>
                       <td>
                         <Pill
@@ -167,7 +165,7 @@ export default function ClinicianDashboard() {
 
       <Modal
         open={selected() !== null}
-        title={selected() ? `Ticket ${selected()!.ticketId}` : "Ticket"}
+        title={selected() ? `Ticket #${selected()!.ticketNumber}` : "Ticket"}
         onClose={() => setSelectedId(null)}
       >
         <Show when={selected()}>
@@ -207,7 +205,7 @@ export default function ClinicianDashboard() {
                 <button
                   class="btn btn-primary"
                   type="button"
-                  onClick={() => window.location.assign(`${apiBase()}/tickets/${t().ticketId}`)}
+                  onClick={() => navigate(`/tickets/${t().ticketId}`)}
                 >
                   View Details
                 </button>

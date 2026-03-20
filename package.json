@@ -24,6 +24,7 @@
     "@tauri-apps/plugin-opener": "^2",
     "@types/axios": "^0.9.36",
     "axios": "^1.13.6",
+    "@solidjs/router": "^0.15.0",
     "solid-js": "^1.9.3"
   },
   "devDependencies": {

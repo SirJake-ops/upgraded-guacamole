@@ -12,6 +12,8 @@ use uuid::Uuid;
 
 use crate::{auth, state::AppState};
 
+pub mod messages;
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TicketFileBody {
@@ -43,6 +45,7 @@ pub struct UserTicketAssignDto {
 #[serde(rename_all = "camelCase")]
 pub struct TicketResponse {
     pub ticket_id: Uuid,
+    pub ticket_number: i64,
     pub title: String,
     pub description: String,
     pub steps_to_reproduce: String,
@@ -59,6 +62,8 @@ pub struct TicketResponse {
 pub struct Ticket {
     #[sqlx(rename = "TicketId")]
     pub ticket_id: Uuid,
+    #[sqlx(rename = "TicketNumber")]
+    pub ticket_number: i64,
     #[sqlx(rename = "SubmitterId")]
     pub submitter_id: Uuid,
     #[sqlx(rename = "AssigneeId")]
@@ -117,7 +122,7 @@ pub async fn get_ticket_by_id(
     let is_admin = role.eq_ignore_ascii_case("Admin");
 
     let ticket = match sqlx::query_as::<_, Ticket>(
-        "SELECT \"TicketId\", \"SubmitterId\", \"AssigneeId\", \"Environment\", \"Title\", \"Description\", \"StepsToReproduce\", \"ExpectedResult\", \"IsResolved\", \"CreatedAt\", \"UpdatedAt\", NULLIF(\"DeletedAt\", '-infinity'::timestamptz) AS \"DeletedAt\", \"IsDeleted\" \
+        "SELECT \"TicketId\", \"TicketNumber\", \"SubmitterId\", \"AssigneeId\", \"Environment\", \"Title\", \"Description\", \"StepsToReproduce\", \"ExpectedResult\", \"IsResolved\", \"CreatedAt\", \"UpdatedAt\", NULLIF(\"DeletedAt\", '-infinity'::timestamptz) AS \"DeletedAt\", \"IsDeleted\" \
          FROM \"Tickets\" \
          WHERE \"TicketId\" = $1 \
          LIMIT 1",
@@ -154,7 +159,7 @@ pub async fn list_tickets(
     let res = if is_admin {
         if let Some(submitter_id) = q.submitter_id.filter(|id| *id != Uuid::nil()) {
             sqlx::query_as::<_, Ticket>(
-                "SELECT \"TicketId\", \"SubmitterId\", \"AssigneeId\", \"Environment\", \"Title\", \"Description\", \"StepsToReproduce\", \"ExpectedResult\", \"IsResolved\", \"CreatedAt\", \"UpdatedAt\", NULLIF(\"DeletedAt\", '-infinity'::timestamptz) AS \"DeletedAt\", \"IsDeleted\" \
+                "SELECT \"TicketId\", \"TicketNumber\", \"SubmitterId\", \"AssigneeId\", \"Environment\", \"Title\", \"Description\", \"StepsToReproduce\", \"ExpectedResult\", \"IsResolved\", \"CreatedAt\", \"UpdatedAt\", NULLIF(\"DeletedAt\", '-infinity'::timestamptz) AS \"DeletedAt\", \"IsDeleted\" \
                  FROM \"Tickets\" \
                  WHERE \"SubmitterId\" = $1 \
                  ORDER BY \"CreatedAt\" DESC",
@@ -164,7 +169,7 @@ pub async fn list_tickets(
             .await
         } else {
             sqlx::query_as::<_, Ticket>(
-                "SELECT \"TicketId\", \"SubmitterId\", \"AssigneeId\", \"Environment\", \"Title\", \"Description\", \"StepsToReproduce\", \"ExpectedResult\", \"IsResolved\", \"CreatedAt\", \"UpdatedAt\", NULLIF(\"DeletedAt\", '-infinity'::timestamptz) AS \"DeletedAt\", \"IsDeleted\" \
+                "SELECT \"TicketId\", \"TicketNumber\", \"SubmitterId\", \"AssigneeId\", \"Environment\", \"Title\", \"Description\", \"StepsToReproduce\", \"ExpectedResult\", \"IsResolved\", \"CreatedAt\", \"UpdatedAt\", NULLIF(\"DeletedAt\", '-infinity'::timestamptz) AS \"DeletedAt\", \"IsDeleted\" \
                  FROM \"Tickets\" \
                  ORDER BY \"CreatedAt\" DESC",
             )
@@ -173,7 +178,7 @@ pub async fn list_tickets(
         }
     } else {
         sqlx::query_as::<_, Ticket>(
-            "SELECT \"TicketId\", \"SubmitterId\", \"AssigneeId\", \"Environment\", \"Title\", \"Description\", \"StepsToReproduce\", \"ExpectedResult\", \"IsResolved\", \"CreatedAt\", \"UpdatedAt\", NULLIF(\"DeletedAt\", '-infinity'::timestamptz) AS \"DeletedAt\", \"IsDeleted\" \
+            "SELECT \"TicketId\", \"TicketNumber\", \"SubmitterId\", \"AssigneeId\", \"Environment\", \"Title\", \"Description\", \"StepsToReproduce\", \"ExpectedResult\", \"IsResolved\", \"CreatedAt\", \"UpdatedAt\", NULLIF(\"DeletedAt\", '-infinity'::timestamptz) AS \"DeletedAt\", \"IsDeleted\" \
              FROM \"Tickets\" \
              WHERE \"SubmitterId\" = $1 OR \"AssigneeId\" = $1 \
              ORDER BY \"CreatedAt\" DESC",
@@ -225,7 +230,7 @@ pub async fn create_ticket(
         "INSERT INTO \"Tickets\" \
          (\"TicketId\", \"SubmitterId\", \"AssigneeId\", \"Environment\", \"Title\", \"Description\", \"StepsToReproduce\", \"ExpectedResult\", \"IsResolved\", \"CreatedAt\", \"UpdatedAt\", \"DeletedAt\", \"IsDeleted\") \
          VALUES ($1,$2,NULL,$3,$4,$5,$6,$7,$8,$9,$10,'-infinity'::timestamptz,$11) \
-         RETURNING \"TicketId\", \"SubmitterId\", \"AssigneeId\", \"Environment\", \"Title\", \"Description\", \"StepsToReproduce\", \"ExpectedResult\", \"IsResolved\", \"CreatedAt\", \"UpdatedAt\", NULLIF(\"DeletedAt\", '-infinity'::timestamptz) AS \"DeletedAt\", \"IsDeleted\"",
+         RETURNING \"TicketId\", \"TicketNumber\", \"SubmitterId\", \"AssigneeId\", \"Environment\", \"Title\", \"Description\", \"StepsToReproduce\", \"ExpectedResult\", \"IsResolved\", \"CreatedAt\", \"UpdatedAt\", NULLIF(\"DeletedAt\", '-infinity'::timestamptz) AS \"DeletedAt\", \"IsDeleted\"",
     )
     .bind(ticket_id)
     .bind(body.submitter_id)
@@ -247,6 +252,7 @@ pub async fn create_ticket(
 
     let response = TicketResponse {
         ticket_id: created.ticket_id,
+        ticket_number: created.ticket_number,
         title: created.title,
         description: created.description,
         steps_to_reproduce: created.steps_to_reproduce,
@@ -280,7 +286,7 @@ pub async fn update_ticket(
     }
 
     let existing = match sqlx::query_as::<_, Ticket>(
-        "SELECT \"TicketId\", \"SubmitterId\", \"AssigneeId\", \"Environment\", \"Title\", \"Description\", \"StepsToReproduce\", \"ExpectedResult\", \"IsResolved\", \"CreatedAt\", \"UpdatedAt\", NULLIF(\"DeletedAt\", '-infinity'::timestamptz) AS \"DeletedAt\", \"IsDeleted\" \
+        "SELECT \"TicketId\", \"TicketNumber\", \"SubmitterId\", \"AssigneeId\", \"Environment\", \"Title\", \"Description\", \"StepsToReproduce\", \"ExpectedResult\", \"IsResolved\", \"CreatedAt\", \"UpdatedAt\", NULLIF(\"DeletedAt\", '-infinity'::timestamptz) AS \"DeletedAt\", \"IsDeleted\" \
          FROM \"Tickets\" WHERE \"TicketId\" = $1 LIMIT 1",
     )
     .bind(ticket_id)
@@ -299,7 +305,7 @@ pub async fn update_ticket(
         "UPDATE \"Tickets\" SET \
          \"SubmitterId\" = $2, \"AssigneeId\" = NULL, \"Environment\" = $3, \"Title\" = $4, \"Description\" = $5, \"StepsToReproduce\" = $6, \"ExpectedResult\" = $7, \"IsResolved\" = false, \"CreatedAt\" = $8, \"UpdatedAt\" = $9, \"DeletedAt\" = '-infinity'::timestamptz, \"IsDeleted\" = false \
          WHERE \"TicketId\" = $1 \
-         RETURNING \"TicketId\", \"SubmitterId\", \"AssigneeId\", \"Environment\", \"Title\", \"Description\", \"StepsToReproduce\", \"ExpectedResult\", \"IsResolved\", \"CreatedAt\", \"UpdatedAt\", NULLIF(\"DeletedAt\", '-infinity'::timestamptz) AS \"DeletedAt\", \"IsDeleted\"",
+         RETURNING \"TicketId\", \"TicketNumber\", \"SubmitterId\", \"AssigneeId\", \"Environment\", \"Title\", \"Description\", \"StepsToReproduce\", \"ExpectedResult\", \"IsResolved\", \"CreatedAt\", \"UpdatedAt\", NULLIF(\"DeletedAt\", '-infinity'::timestamptz) AS \"DeletedAt\", \"IsDeleted\"",
     )
     .bind(ticket_id)
     .bind(body.submitter_id)
@@ -319,6 +325,7 @@ pub async fn update_ticket(
 
     Json(TicketResponse {
         ticket_id: updated.ticket_id,
+        ticket_number: updated.ticket_number,
         title: updated.title,
         description: updated.description,
         steps_to_reproduce: updated.steps_to_reproduce,
@@ -344,7 +351,7 @@ pub async fn delete_ticket(
 
     let deleted = sqlx::query_as::<_, Ticket>(
         "DELETE FROM \"Tickets\" WHERE \"TicketId\" = $1 \
-         RETURNING \"TicketId\", \"SubmitterId\", \"AssigneeId\", \"Environment\", \"Title\", \"Description\", \"StepsToReproduce\", \"ExpectedResult\", \"IsResolved\", \"CreatedAt\", \"UpdatedAt\", NULLIF(\"DeletedAt\", '-infinity'::timestamptz) AS \"DeletedAt\", \"IsDeleted\"",
+         RETURNING \"TicketId\", \"TicketNumber\", \"SubmitterId\", \"AssigneeId\", \"Environment\", \"Title\", \"Description\", \"StepsToReproduce\", \"ExpectedResult\", \"IsResolved\", \"CreatedAt\", \"UpdatedAt\", NULLIF(\"DeletedAt\", '-infinity'::timestamptz) AS \"DeletedAt\", \"IsDeleted\"",
     )
     .bind(ticket_id)
     .fetch_optional(&state.db)
@@ -387,7 +394,7 @@ pub async fn assign_ticket_to_user(
     let now = Utc::now();
     let updated = sqlx::query_as::<_, Ticket>(
         "UPDATE \"Tickets\" SET \"AssigneeId\" = $2, \"UpdatedAt\" = $3 WHERE \"TicketId\" = $1 \
-         RETURNING \"TicketId\", \"SubmitterId\", \"AssigneeId\", \"Environment\", \"Title\", \"Description\", \"StepsToReproduce\", \"ExpectedResult\", \"IsResolved\", \"CreatedAt\", \"UpdatedAt\", NULLIF(\"DeletedAt\", '-infinity'::timestamptz) AS \"DeletedAt\", \"IsDeleted\"",
+         RETURNING \"TicketId\", \"TicketNumber\", \"SubmitterId\", \"AssigneeId\", \"Environment\", \"Title\", \"Description\", \"StepsToReproduce\", \"ExpectedResult\", \"IsResolved\", \"CreatedAt\", \"UpdatedAt\", NULLIF(\"DeletedAt\", '-infinity'::timestamptz) AS \"DeletedAt\", \"IsDeleted\"",
     )
     .bind(ticket_id)
     .bind(body.user_id)
@@ -398,6 +405,7 @@ pub async fn assign_ticket_to_user(
     match updated {
         Ok(Some(t)) => Json(TicketResponse {
             ticket_id: t.ticket_id,
+            ticket_number: t.ticket_number,
             title: t.title,
             description: t.description,
             steps_to_reproduce: t.steps_to_reproduce,

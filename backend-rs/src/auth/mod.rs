@@ -12,6 +12,7 @@ use uuid::Uuid;
 
 use crate::state::AppState;
 
+pub mod identity_password;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -120,8 +121,6 @@ struct SessionRow {
     session_id: Uuid,
     #[sqlx(rename = "UserId")]
     user_id: Uuid,
-    #[sqlx(rename = "CreatedAt")]
-    created_at: DateTime<Utc>,
     #[sqlx(rename = "LastSeenAt")]
     last_seen_at: DateTime<Utc>,
     #[sqlx(rename = "ExpiresAt")]
@@ -180,6 +179,7 @@ async fn revoke_session(state: &AppState, session_id: Uuid) -> Result<(), Status
 
 async fn require_session_row(state: &AppState, session_id: Uuid) -> Result<SessionRow, StatusCode> {
     let row = sqlx::query_as::<_, SessionRow>(
+        "SELECT \"SessionId\", \"UserId\", \"LastSeenAt\", \"ExpiresAt\", \"RevokedAt\" \
          FROM \"UserSessions\" \
          WHERE \"SessionId\" = $1 \
          LIMIT 1",

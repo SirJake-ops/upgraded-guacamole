@@ -23,6 +23,10 @@ pub fn base_router(state: AppState) -> Router {
         .route("/api/tickets/hello", get(tickets::hello))
         .route("/ws/chat", get(chat::ws_chat))
         .route(
+            "/api/tickets/:ticket_id/messages",
+            get(tickets::messages::list_messages).post(tickets::messages::create_message),
+        )
+        .route(
             "/api/tickets/:ticket_id",
             get(tickets::get_ticket_by_id)
                 .put(tickets::update_ticket)
@@ -68,4 +72,3 @@ pub async fn build_state(cfg: &config::Config) -> Result<AppState, String> {
 
     Ok(state)
 }
-

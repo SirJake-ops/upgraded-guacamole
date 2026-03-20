@@ -16,6 +16,10 @@ use crate::{auth, state::AppState};
 pub struct ChatEvent {
     pub kind: String,
     pub room: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ticket_id: Option<Uuid>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message_id: Option<i64>,
     pub from_user_id: Uuid,
     pub from_role: String,
     pub body: String,
@@ -80,6 +84,8 @@ async fn handle_socket(socket: WebSocket, state: AppState, user_id: Uuid, role: 
             let _ = tx.send(ChatEvent {
                 kind: "chat".to_string(),
                 room,
+                ticket_id: None,
+                message_id: None,
                 from_user_id: user_id,
                 from_role: role.clone(),
                 body,

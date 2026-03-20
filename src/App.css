@@ -551,6 +551,52 @@ input:disabled {
   padding: 10px 14px;
 }
 
+/* Ticket chat */
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.chat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 420px;
+  overflow: auto;
+  padding-right: 6px;
+}
+
+.chat-msg {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.chat-msg.is-me {
+  border-color: rgba(0, 128, 128, 0.22);
+  background: rgba(0, 128, 128, 0.06);
+}
+
+.chat-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  opacity: 0.75;
+  margin-bottom: 6px;
+}
+
+.chat-body {
+  white-space: pre-wrap;
+  line-height: 1.35;
+}
+
+.chat-compose .textarea {
+  resize: vertical;
+}
+
 .action-modal {
   display: flex;
   flex-direction: column;

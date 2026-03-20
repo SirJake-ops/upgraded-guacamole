@@ -1,8 +1,6 @@
-import { createMemo, createSignal, For, onCleanup, onMount } from "solid-js";
+import { createContext, createMemo, createSignal, For, onCleanup, onMount, useContext, type Accessor } from "solid-js";
+import { useNavigate, type RouteSectionProps } from "@solidjs/router";
 import LoginPage from "../auth/LoginPage";
-import GenericTicketsDashboard from "../dashboards/GenericTicketsDashboard";
-import ClinicianDashboard from "../dashboards/ClinicianDashboard";
-import AdminDashboard from "../dashboards/AdminDashboard";
 import ToastCenter, { type Toast } from "../notifications/ToastCenter";
 import type { AppEvent } from "../../tauri/events";
 import Drawer from "../ui/Drawer";
@@ -16,7 +14,25 @@ const views: { key: ViewKey; label: string }[] = [
   { key: "admin", label: "Hospital Admin" },
 ];
 
-export default function AppShell() {
+type AppShellContextValue = {
+  user: Accessor<User | null>;
+  setUser: (u: User | null) => void;
+  role: Accessor<string>;
+  view: Accessor<ViewKey>;
+  setView: (v: ViewKey) => void;
+  allowedViews: Accessor<{ key: ViewKey; label: string }[]>;
+};
+
+const AppShellContext = createContext<AppShellContextValue>();
+
+export function useAppShell() {
+  const ctx = useContext(AppShellContext);
+  if (!ctx) throw new Error("useAppShell must be used within <AppShellContext.Provider>");
+  return ctx;
+}
+
+export default function AppShell(props: RouteSectionProps) {
+  const navigate = useNavigate();
   const [view, setView] = createSignal<ViewKey>("tickets");
   const [user, setUser] = createSignal<User | null>(null);
   const role = createMemo(() => (user()?.role ?? "").toLowerCase());
@@ -36,10 +52,6 @@ export default function AppShell() {
   const [events, setEvents] = createSignal<{ id: string; at: string; event: AppEvent }[]>([]);
   const [drawer, setDrawer] = createSignal<null | "search" | "alerts">(null);
   const [accountOpen, setAccountOpen] = createSignal(false);
-  const apiBase = createMemo(() => {
-    const base = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "http://localhost:5176";
-    return `${base.replace(/\/+$/, "")}/api`;
-  });
 
   const dismissToast = (id: string) => {
     setToasts((xs) => xs.filter((t) => t.id !== id));
@@ -118,9 +130,24 @@ export default function AppShell() {
     }
   };
 
+  const setViewAndGo = (v: ViewKey) => {
+    setView(v);
+    navigate("/");
+  };
+
   return (
-    <div class={`app ${!authed() ? "app-login" : ""}`}>
-      <ToastCenter toasts={toasts()} onDismiss={dismissToast} />
+    <AppShellContext.Provider
+      value={{
+        user,
+        setUser,
+        role,
+        view,
+        setView: setViewAndGo,
+        allowedViews,
+      }}
+    >
+      <div class={`app ${!authed() ? "app-login" : ""}`}>
+        <ToastCenter toasts={toasts()} onDismiss={dismissToast} />
       <Drawer open={drawer() === "search"} title="Search" onClose={() => setDrawer(null)}>
         <div class="drawer-stack">
           <div class="drawer-field">
@@ -133,13 +160,13 @@ export default function AppShell() {
               }}
             />
           </div>
-          <div class="drawer-muted">Mock UI. Wire this to your .NET backend search later.</div>
+          <div class="drawer-muted"></div>
           <div class="drawer-list">
             <button
               class="drawer-item"
               type="button"
               onClick={() => {
-                setView("tickets");
+                setViewAndGo("tickets");
                 setDrawer(null);
               }}
             >
@@ -149,7 +176,7 @@ export default function AppShell() {
               class="drawer-item"
               type="button"
               onClick={() => {
-                setView("clinical");
+                setViewAndGo("clinical");
                 setDrawer(null);
               }}
               disabled={allowedViews().find((v) => v.key === "clinical") == null}
@@ -160,7 +187,7 @@ export default function AppShell() {
               class="drawer-item"
               type="button"
               onClick={() => {
-                setView("admin");
+                setViewAndGo("admin");
                 setDrawer(null);
               }}
               disabled={allowedViews().find((v) => v.key === "admin") == null}
@@ -194,10 +221,9 @@ export default function AppShell() {
                   type="button"
                   onClick={() => {
                     const ev = x.event;
-                    if (ev.type === "TicketCreated")
-                      window.location.assign(`${apiBase()}/tickets/${ev.payload.ticket_id}`);
-                    if (ev.type === "TicketUpdated")
-                      window.location.assign(`${apiBase()}/tickets/${ev.payload.ticket_id}`);
+                    if (ev.type === "TicketCreated") navigate(`/tickets/${ev.payload.ticket_id}`);
+                    if (ev.type === "TicketUpdated") navigate(`/tickets/${ev.payload.ticket_id}`);
+                    setDrawer(null);
                   }}
                 >
                   <div class="feed-top">
@@ -257,7 +283,7 @@ export default function AppShell() {
                 <button
                   type="button"
                   class={`nav-item ${view() === v.key ? "is-active" : ""}`}
-                  onClick={() => setView(v.key)}
+                  onClick={() => setViewAndGo(v.key)}
                 >
                   {v.label}
                 </button>
@@ -295,10 +321,9 @@ export default function AppShell() {
             error={authError()}
           />
         ) : null}
-        {authed() && view() === "tickets" ? <GenericTicketsDashboard currentUserId={user()!.id} /> : null}
-        {authed() && view() === "clinical" ? <ClinicianDashboard /> : null}
-        {authed() && view() === "admin" ? <AdminDashboard /> : null}
+        {authed() ? props.children : null}
       </main>
-    </div>
+      </div>
+    </AppShellContext.Provider>
   );
 }

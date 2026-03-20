@@ -1,4 +1,5 @@
 import { For, Show, createMemo, createResource, createSignal } from "solid-js";
+import { useNavigate } from "@solidjs/router";
 import KpiCard from "./ui/KpiCard";
 import Pill from "./ui/Pill";
 import Sparkline from "./ui/Sparkline";
@@ -23,15 +24,12 @@ const envLabel = (e: Ticket["environment"]) => {
 };
 
 export default function GenericTicketsDashboard(props: GenericTicketsDashboardProps) {
+  const navigate = useNavigate();
   const [selectedId, setSelectedId] = createSignal<string | null>(null);
   const [action, setAction] = createSignal<null | { title: string; body: string; href?: string }>(null);
   const [items, { refetch }] = createResource(getTickets);
   const list = createMemo(() => items() ?? []);
   const selected = createMemo(() => list().find((t) => t.ticketId === selectedId()) ?? null);
-  const apiBase = createMemo(() => {
-    const base = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "http://localhost:5176";
-    return `${base.replace(/\/+$/, "")}/api`;
-  });
 
   const openCount = createMemo(() => list().filter((t) => !t.isResolved).length);
   const resolvedCount = createMemo(() => list().filter((t) => t.isResolved).length);
@@ -159,7 +157,7 @@ export default function GenericTicketsDashboard(props: GenericTicketsDashboardPr
           <table class="table">
             <thead>
               <tr>
-                <th>ID</th>
+                <th>No.</th>
                 <th>Title</th>
                 <th>Environment</th>
                 <th>Assigned</th>
@@ -170,7 +168,7 @@ export default function GenericTicketsDashboard(props: GenericTicketsDashboardPr
               <For each={list()}>
                 {(t) => (
                   <tr onClick={() => setSelectedId(t.ticketId)} class="row-click">
-                    <td class="mono">{t.ticketId}</td>
+                    <td class="mono">#{t.ticketNumber}</td>
                     <td class="cell-title">{t.title}</td>
                     <td>{envLabel(t.environment)}</td>
                     <td>
@@ -189,7 +187,7 @@ export default function GenericTicketsDashboard(props: GenericTicketsDashboardPr
 
       <Modal
         open={selected() !== null}
-        title={selected() ? `Ticket ${selected()!.ticketId}` : "Ticket"}
+        title={selected() ? `Ticket #${selected()!.ticketNumber}` : "Ticket"}
         onClose={() => setSelectedId(null)}
       >
         <Show when={selected()}>
@@ -217,11 +215,11 @@ export default function GenericTicketsDashboard(props: GenericTicketsDashboardPr
               </div>
               <div class="modal-row">
                 <div class="modal-k">Submitter</div>
-                <div class="modal-v mono">{t().submitterId}</div>
+                <div class="modal-v mono">{t().submitterId.slice(0, 8)}</div>
               </div>
               <div class="modal-row">
                 <div class="modal-k">Assignee</div>
-                <div class="modal-v mono">{t().assigneeId ?? "null"}</div>
+                <div class="modal-v mono">{t().assigneeId ? t().assigneeId.slice(0, 8) : "unassigned"}</div>
               </div>
               <div class="modal-row">
                 <div class="modal-k">Description</div>
@@ -243,7 +241,7 @@ export default function GenericTicketsDashboard(props: GenericTicketsDashboardPr
                 <button
                   class="btn btn-primary"
                   type="button"
-                  onClick={() => window.location.assign(`${apiBase()}/tickets/${t().ticketId}`)}
+                  onClick={() => navigate(`/tickets/${t().ticketId}`)}
                 >
                   View Details
                 </button>
